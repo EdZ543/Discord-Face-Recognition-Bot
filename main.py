@@ -1,12 +1,13 @@
 import discord
 import face_recognition
 import os
-from decouple import config
 from PIL import Image
 import numpy as np
 import requests
+from dotenv import load_dotenv
 
-TOKEN = config("TOKEN")
+load_dotenv()
+TOKEN = os.environ.get("TOKEN")
 client = discord.Client()
 
 image_types = ["png", "jpg", "jpeg"]
