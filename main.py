@@ -2,12 +2,20 @@ import discord
 import face_recognition
 import os
 from decouple import config
+from PIL import Image
+import numpy as np
+import requests
 
 TOKEN = config("TOKEN")
 client = discord.Client()
 
 image_types = ["png", "jpg", "jpeg"]
 image_encodings = {}
+
+def encode(attachment):
+	im = Image.open(requests.get(attachment.url, stream=True).raw)
+	im = im.convert("RGB")
+	return face_recognition.face_encodings(np.array(im))
 
 @client.event
 async def on_ready():
@@ -27,16 +35,13 @@ async def on_message(message):
 		name = user_message.split(" ")[1]
 		for attachment in message.attachments:
 			if any(attachment.filename.lower().endswith(image) for image in image_types):
-				await attachment.save(attachment.filename)
-				image_load = face_recognition.load_image_file(attachment.filename)
-				image_encoding = face_recognition.face_encodings(image_load)
+				image_encoding = encode(attachment)
 				if len(image_encoding) != 0:
 					image_encodings[name] = image_encoding[0]
 					await message.delete()
 					await message.channel.send(f"{name}'s face has been added!")
 				else:
 					await message.channel.send("Not a face")
-				os.remove(attachment.filename)
 
 	elif user_message.startswith("!remove_face"):
 		name = user_message.split(" ")[1]
@@ -55,9 +60,7 @@ async def on_message(message):
 	else:
 		for attachment in message.attachments:
 			if any(attachment.filename.lower().endswith(image) for image in image_types):
-				await attachment.save(attachment.filename)
-				unknown_image_load = face_recognition.load_image_file(attachment.filename)
-				unknown_image_encoding = face_recognition.face_encodings(unknown_image_load)
+				unknown_image_encoding = encode(attachment)
 				if len(unknown_image_encoding) != 0: 
 					results = face_recognition.compare_faces(list(image_encodings.values()), unknown_image_encoding[0])
 					for i in range(len(image_encodings)):
@@ -65,6 +68,5 @@ async def on_message(message):
 							await message.delete()
 							await message.channel.send(f"You can't send {list(image_encodings)[i]}'s face!")
 							break
-				os.remove(attachment.filename)
 
 client.run(TOKEN)
