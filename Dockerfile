@@ -41,7 +41,7 @@ RUN cd ~ && \
 #     pip3 install -r requirements.txt
 # RUN whatever_command_you_run_to_start_your_app
 
-COPY . /root/main.py
-RUN cd /root/main.py && \
-	pip3 install -r requirements.txt
-RUN python3 main.py
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
+COPY . .
+CMD ["python3", "main.py"]
