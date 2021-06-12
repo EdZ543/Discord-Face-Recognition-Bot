@@ -5,13 +5,15 @@ from PIL import Image
 import numpy as np
 import requests
 from dotenv import load_dotenv
+import collections
 
 load_dotenv()
 TOKEN = os.environ.get("TOKEN")
 client = discord.Client()
 
 image_types = ["png", "jpg", "jpeg"]
-image_encodings = {}
+image_encodings = collections.defaultdict(dict)
+
 
 def encode(attachment):
 	im = Image.open(requests.get(attachment.url, stream=True).raw)
@@ -27,6 +29,7 @@ async def on_message(message):
 	username = str(message.author).split("#")[0]
 	user_message = str(message.content)
 	channel = str(message.channel.name)
+	server_id = str(message.guild.id)
 	print(f"{username}: {user_message} ({channel})");
 
 	if message.author == client.user:
@@ -38,7 +41,7 @@ async def on_message(message):
 			if any(attachment.filename.lower().endswith(image) for image in image_types):
 				image_encoding = encode(attachment)
 				if len(image_encoding) != 0:
-					image_encodings[name] = image_encoding[0]
+					image_encodings[server_id][name] = image_encoding[0]
 					await message.delete()
 					await message.channel.send(f"{name}'s face has been added!")
 				else:
@@ -46,15 +49,15 @@ async def on_message(message):
 
 	elif user_message.startswith("!remove_face"):
 		name = user_message.split(" ")[1]
-		if name in image_encodings:
-			image_encodings.pop(name, None)
+		if name in image_encodings[server_id]:
+			image_encodings[server_id].pop(name, None)
 			await message.channel.send(f"{name}'s face has been removed!")
 		else:
 			await message.channel.send(f"{name}'s face hasn't been added")
 
 	elif user_message == "!list_faces":
 		response = "Faces added:"
-		for name in list(image_encodings):
+		for name in list(image_encodings[server_id]):
 			response += "\n" + name
 		await message.channel.send(response)
 
@@ -63,11 +66,11 @@ async def on_message(message):
 			if any(attachment.filename.lower().endswith(image) for image in image_types):
 				unknown_image_encoding = encode(attachment)
 				if len(unknown_image_encoding) != 0: 
-					results = face_recognition.compare_faces(list(image_encodings.values()), unknown_image_encoding[0])
-					for i in range(len(image_encodings)):
+					results = face_recognition.compare_faces(list(image_encodings[server_id].values()), unknown_image_encoding[0])
+					for i in range(len(image_encodings[server_id])):
 						if results[i] == True:
 							await message.delete()
-							await message.channel.send(f"You can't send {list(image_encodings)[i]}'s face!")
+							await message.channel.send(f"You can't send {list(image_encodings[server_id])[i]}'s face!")
 							break
 
 client.run(TOKEN)
